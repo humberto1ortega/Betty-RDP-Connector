@@ -29,12 +29,11 @@ currentY := currentY + 40
 mainGui.AddText("x10 y" currentY " w" oneHalfWidth, "Server IP: ")
 mainGui.AddText("x" (oneHalfWidth + margin) " y" currentY " w" oneHalfWidth, "Server MAC: ")
 currentY := currentY + 20
-ipTextBox := mainGui.Add("Edit", "x10 y" currentY " w" oneHalfWidth " vServerIP", "")
-macTextBox := mainGui.Add("Edit", "x" (oneHalfWidth + margin) " y" currentY " w" oneHalfWidth " vServerMAC", "")
+ipTextBox := mainGui.Add("Edit", "x10 y" currentY " w" oneHalfWidth " Limit15 vServerIP", "")
+macTextBox := mainGui.Add("Edit", "x" (oneHalfWidth + margin) " y" currentY " w" oneHalfWidth " Limit17 vServerMAC", "")
 currentY := currentY + 40
 startBtn := mainGui.AddButton("x10" " y" currentY " w" fullWidth " h40", "Start Server")
 currentY := currentY + 30
-
 
 ; Handle button clicks and form close events
 rdpSessionDropdown.OnEvent("Change", (*) => ValidateRDPDropdownSelected())
@@ -153,10 +152,10 @@ StartServer(*) {
     if (!CheckRDPSelected()) {
         MsgBox("Please select an RDP session server.")
         return
-    } else if (!ipTextBox.Text) {
+    } else if (!ipTextBox.Text || !RegExMatch(ipTextBox.Text, "^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")) {
         MsgBox("Please enter the local server IP address. (ex. 192.168.1.100)")
         return
-    } else if (!macTextBox.Text) {
+    } else if (!macTextBox.Text || !RegExMatch(macTextBox.Text, "^([0-9A-Fa-f]{2}[:\-]){5}([0-9A-Fa-f]{2})$")) {
         MsgBox("Please enter the local server MAC address. (ex. 00:11:22:33:44:55)")
         return
     }
