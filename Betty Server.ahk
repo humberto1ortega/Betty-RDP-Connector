@@ -134,17 +134,35 @@ PingServer(ip) {
 ; --------------------------------------------------
 ; START SERVER FUNCTIONS
 ; --------------------------------------------------
-WakeOnLAN(mac) {
+WakeOnLAN(mac, port := 9)
+{
+    ; Parse/Validate the ip and mac addresses
+    subnetBroadcastrAddress := GetSubnetBroadcastAddress(ipTextBox.Text)
     cleanMac := StrUpper(RegExReplace(mac, "[^0-9A-Fa-f]"))
+    if (StrLen(cleanMac) != 12)
+        throw Error("Invalid MAC address")
 
+    ; Create the magic packet and send it using powershell
     psCommand := "$mac='" cleanMac "';"
         . "$m=@();for($i=0;$i -lt 12;$i+=2){$m+=[byte]::Parse($mac.Substring($i,2),[System.Globalization.NumberStyles]::HexNumber)};"
-        . "$packet=New-Object byte[] 102;for($i=0;$i -lt 6;$i++){$packet[$i]=0xFF};"
+        . "$packet=New-Object byte[] 102;"
+        . "for($i=0;$i -lt 6;$i++){$packet[$i]=0xFF};"
         . "for($i=0;$i -lt 16;$i++){[Array]::Copy($m,0,$packet,6+($i*6),6)};"
-        . "$u=New-Object Net.Sockets.UdpClient;$u.EnableBroadcast=$true;"
-        . "[void]$u.Send($packet,$packet.Length,'255.255.255.255',9);$u.Close()"
+        . "$u=New-Object Net.Sockets.UdpClient;"
+        . "$u.EnableBroadcast=$true;"
+        . "[void]$u.Send($packet,$packet.Length,'" subnetBroadcastrAddress "'," port ");"
+        . "$u.Close()"
+    RunWait('powershell.exe -NoProfile -WindowStyle Hidden -Command "' psCommand '"',, "Hide")
+}
 
-    RunWait(A_ComSpec " /c powershell -NoProfile -Command " Chr(34) psCommand Chr(34), , "Hide")
+GetSubnetBroadcastAddress(ip) {
+    ; If this is a public ip then just return the ip, if its a private ip then get the subnet mask and calculate the broadcast address to use for the Wake-on-LAN magic packet
+    if (RegExMatch(ip, "^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)")) {
+        ; Replace the last octet of the IP address with 255 to get the broadcast address for the subnet
+        return RegExReplace(ip, "\d+$", "255") 
+    } else {
+        return ip
+    }
 }
 
 StartServer(*) {
@@ -155,8 +173,8 @@ StartServer(*) {
     } else if (!ipTextBox.Text || !RegExMatch(ipTextBox.Text, "^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")) {
         MsgBox("Please enter the local server IP address. (ex. 192.168.1.100)")
         return
-    } else if (!macTextBox.Text || !RegExMatch(macTextBox.Text, "^([0-9A-Fa-f]{2}[:\-]){5}([0-9A-Fa-f]{2})$")) {
-        MsgBox("Please enter the local server MAC address. (ex. 00:11:22:33:44:55)")
+    } else if (!macTextBox.Text || (!RegExMatch(macTextBox.Text, "^([0-9A-Fa-f]{2}[:\-]){5}([0-9A-Fa-f]{2})$") && !RegExMatch(macTextBox.Text, "^[0-9A-Fa-f]{12}$") )) {
+        MsgBox("Please enter the local server MAC address. (ex. 00:11:22:33:44:55 or 001122334455)")
         return
     }
 
